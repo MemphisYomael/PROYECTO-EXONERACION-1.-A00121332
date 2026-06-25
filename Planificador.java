@@ -7,7 +7,7 @@ import java.util.Queue;
 public class Planificador {
     public ResultadoPlanificacion fcfs(List<Proceso> procesosOriginales) {
         List<Proceso> procesos = copiarProcesos(procesosOriginales);
-        List<BloqueGantt> bloques = ejecutarNoExpropiativo(procesos);
+        List<BloqueGantt> bloques = ejecutarProcesosEnOrden(procesos);
         calcularTiempos(procesos);
         return new ResultadoPlanificacion(procesos, bloques);
     }
@@ -15,41 +15,65 @@ public class Planificador {
     public ResultadoPlanificacion sjf(List<Proceso> procesosOriginales) {
         List<Proceso> procesos = copiarProcesos(procesosOriginales);
         procesos.sort(Comparator.comparingInt(Proceso::getRafaga));
-        List<BloqueGantt> bloques = ejecutarNoExpropiativo(procesos);
+        List<BloqueGantt> bloques = ejecutarProcesosEnOrden(procesos);
         calcularTiempos(procesos);
         return new ResultadoPlanificacion(procesos, bloques);
     }
+
 
     public ResultadoPlanificacion srtf(List<Proceso> procesosOriginales) {
         List<Proceso> procesos = copiarProcesos(procesosOriginales);
         List<Proceso> pendientes = new ArrayList<>(procesos);
         List<BloqueGantt> bloques = new ArrayList<>();
         int tiempo = 0;
+        int tiempoSecuencia = 0;
 
+        int contador = 0;
+        boolean bloquearSecuencia = false;
         while (!pendientes.isEmpty()) {
+
             Proceso actual = pendientes.stream()
                     .min(Comparator.comparingInt(Proceso::getRafagaRestante))
                     .orElseThrow();
+            Proceso secuencia = pendientes.getFirst();
 
-            int inicio = tiempo;
-            while (actual.getRafagaRestante() > 0) {
-                actual.setRafagaRestante(actual.getRafagaRestante() - 1);
-                tiempo++;
+            if(!bloquearSecuencia) {
+                int inicioSecuencia = tiempoSecuencia;
+                secuencia.setRafagaRestante(secuencia.getRafagaRestante() - 1);
+                tiempoSecuencia--;
+
+                bloques.add(new BloqueGantt(secuencia.getId(), inicioSecuencia, tiempoSecuencia));
+
             }
 
-            actual.setTiempoFinalizacion(tiempo);
-            pendientes.remove(actual);
+
+            if(actual != secuencia){
+                bloquearSecuencia = true;
+            }
+
+            int inicio = tiempo;
+
+            actual.setRafagaRestante(actual.getRafagaRestante() - 1);
+            tiempo++;
+
             bloques.add(new BloqueGantt(actual.getId(), inicio, tiempo));
+
+            if (actual.getRafagaRestante() == 0) {
+                actual.setTiempoFinalizacion(tiempo);
+                pendientes.remove(actual);
+                bloquearSecuencia =false;
+            }
         }
 
         calcularTiempos(procesos);
         return new ResultadoPlanificacion(procesos, bloques);
     }
 
+
     public ResultadoPlanificacion priority(List<Proceso> procesosOriginales) {
         List<Proceso> procesos = copiarProcesos(procesosOriginales);
         procesos.sort(Comparator.comparingInt(Proceso::getPrioridad));
-        List<BloqueGantt> bloques = ejecutarNoExpropiativo(procesos);
+        List<BloqueGantt> bloques = ejecutarProcesosEnOrden(procesos);
         calcularTiempos(procesos);
         return new ResultadoPlanificacion(procesos, bloques);
     }
@@ -80,7 +104,7 @@ public class Planificador {
         return new ResultadoPlanificacion(procesos, bloques);
     }
 
-    private List<BloqueGantt> ejecutarNoExpropiativo(List<Proceso> procesos) {
+    private List<BloqueGantt> ejecutarProcesosEnOrden(List<Proceso> procesos) {
         List<BloqueGantt> bloques = new ArrayList<>();
         int tiempo = 0;
 

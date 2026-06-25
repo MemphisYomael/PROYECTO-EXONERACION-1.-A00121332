@@ -1,5 +1,5 @@
 public class Proceso {
-    private final String id;
+    public final String id;
     private final int rafaga;
     private int rafagaRestante;
     private final int prioridad;
